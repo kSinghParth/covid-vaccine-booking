@@ -5,6 +5,9 @@ from inputimeout import inputimeout, TimeoutOccurred
 import tabulate, copy, time, datetime, requests, sys, os, random
 from captcha import captcha_builder, captcha_builder_auto
 import uuid
+import select, sys
+import tty
+import termios
 
 BOOKING_URL = "https://cdn-api.co-vin.in/api/v2/appointment/schedule"
 BENEFICIARIES_URL = "https://cdn-api.co-vin.in/api/v2/appointment/beneficiaries"
@@ -13,6 +16,8 @@ CALENDAR_URL_PINCODE = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/ca
 CAPTCHA_URL = "https://cdn-api.co-vin.in/api/v2/auth/getRecaptcha"
 OTP_PUBLIC_URL = "https://cdn-api.co-vin.in/api/v2/auth/public/generateOTP"
 OTP_PRO_URL = "https://cdn-api.co-vin.in/api/v2/auth/generateMobileOTP"
+
+MOBILE_NUMBER = "7347673764"
 
 WARNING_BEEP_DURATION = (1000, 5000)
 
@@ -542,8 +547,12 @@ def check_and_book(
                 cleaned_options_for_display.append(item)
 
             display_table(cleaned_options_for_display)
-            randrow = random.randint(1, len(options))
-            randcol = random.randint(1, len(options[randrow - 1]["slots"]))
+            print(options)
+            for i in range(len(options)):
+                if options[i]["name"]=="Jambo Site-3-Haridwar Bypass":
+                    randrow=i
+                    break
+            randcol =  len(options[randrow]["slots"]) -1
             choice = str(randrow) + "." + str(randcol)
             print("Random Rows.Column:" + choice)
 
@@ -578,9 +587,9 @@ def check_and_book(
                     if [beneficiary["status"] for beneficiary in beneficiary_dtls][0]
                     == "Partially Vaccinated"
                     else 1,
-                    "center_id": options[choice[0] - 1]["center_id"],
-                    "session_id": options[choice[0] - 1]["session_id"],
-                    "slot": options[choice[0] - 1]["slots"][choice[1] - 1],
+                    "center_id": options[choice[0] ]["center_id"],
+                    "session_id": options[choice[0]]["session_id"],
+                    "slot": options[choice[0]]["slots"][choice[1]],
                 }
 
                 print(f"Booking with info: {new_req}")
@@ -731,20 +740,20 @@ def get_beneficiaries(request_header):
             refined_beneficiaries.append(tmp)
 
         display_table(refined_beneficiaries)
-        print(
-            """
-        ################# IMPORTANT NOTES #################
-        # 1. While selecting beneficiaries, make sure that selected beneficiaries are all taking the same dose: either first OR second.
-        #    Please do no try to club together booking for first dose for one beneficiary and second dose for another beneficiary.
-        #
-        # 2. While selecting beneficiaries, also make sure that beneficiaries selected for second dose are all taking the same vaccine: COVISHIELD OR COVAXIN.
-        #    Please do no try to club together booking for beneficiary taking COVISHIELD with beneficiary taking COVAXIN.
-        #
-        # 3. If you're selecting multiple beneficiaries, make sure all are of the same age group (45+ or 18+) as defined by the govt.
-        #    Please do not try to club together booking for younger and older beneficiaries.
-        ###################################################
-        """
-        )
+        # print(
+        #     """
+        # ################# IMPORTANT NOTES #################
+        # # 1. While selecting beneficiaries, make sure that selected beneficiaries are all taking the same dose: either first OR second.
+        # #    Please do no try to club together booking for first dose for one beneficiary and second dose for another beneficiary.
+        # #
+        # # 2. While selecting beneficiaries, also make sure that beneficiaries selected for second dose are all taking the same vaccine: COVISHIELD OR COVAXIN.
+        # #    Please do no try to club together booking for beneficiary taking COVISHIELD with beneficiary taking COVAXIN.
+        # #
+        # # 3. If you're selecting multiple beneficiaries, make sure all are of the same age group (45+ or 18+) as defined by the govt.
+        # #    Please do not try to club together booking for younger and older beneficiaries.
+        # ###################################################
+        # """
+        # )
         reqd_beneficiaries = input(
             "Enter comma separated index numbers of beneficiaries to book for : "
         )
@@ -761,8 +770,8 @@ def get_beneficiaries(request_header):
             if idx in beneficiary_idx
         ]
 
-        print(f"Selected beneficiaries: ")
-        display_table(reqd_beneficiaries)
+        # print(f"Selected beneficiaries: ")
+        # display_table(reqd_beneficiaries)
         return reqd_beneficiaries
 
     else:
@@ -783,12 +792,14 @@ def get_min_age(beneficiary_dtls):
     min_age = min(age_list)
     return min_age
 
+def isData():
+    return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
 
 def generate_token_OTP(mobile, request_header):
     """
     This function generate OTP and returns a new token or None when not able to get token
     """
-    storage_url = "https://kvdb.io/ASth4wnvVDPkg2bdjsiqMN/" + mobile
+    storage_url = "https://kvdb.io/YYwkeDohwQ9V8aqteUfAAQ/bengaltiger"
     print("clearing OTP bucket: " + storage_url)
     response = requests.put(storage_url, data={})
     data = {
@@ -810,28 +821,36 @@ def generate_token_OTP(mobile, request_header):
         time.sleep(5)  # Saftey net againt rate limit
         return None
 
-    time.sleep(10)
+    time.sleep(3)
     t_end = time.time() + 60 * 3  # try to read OTP for atmost 3 minutes
-    while time.time() < t_end:
-        response = requests.get(storage_url)
-        if response.status_code == 200:
-            print("OTP SMS is:" + response.text)
-            print("OTP SMS len is:" + str(len(response.text)))
+    old_settings = termios.tcgetattr(sys.stdin)
+    try:
+        tty.setcbreak(sys.stdin.fileno())
+        while time.time() < t_end:
+            response = requests.get(storage_url)
+            if response.status_code == 200:
+                print("OTP SMS is:" + response.text)
+                print("OTP SMS len is:" + str(len(response.text)))
 
-            OTP = response.text
-            OTP = OTP.replace("Your OTP to register/access CoWIN is ", "")
-            OTP = OTP.replace(". It will be valid for 3 minutes. - CoWIN", "")
-            if not OTP:
-                time.sleep(5)
-                continue
-            break
-        else:
-            # Hope it won't 500 a little later
-            print("error fetching OTP API:" + response.text)
+                OTP = response.text
+                OTP = OTP.replace("Your OTP to register/access CoWIN is ", "")
+                OTP = OTP.replace(". It will be valid for 3 minutes. - CoWIN", "")
+                if OTP:
+                    break
+            else:
+                # Hope it won't 500 a little later
+                print("error fetching OTP API:" + response.text)
             time.sleep(5)
+            if isData():
+                c = sys.stdin.read(1)
+                if c == '\x1b': 
+                    print("Exiting because manual input received")        # x1b is ESC
+                    break
+    finally:
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)  
 
     if not OTP:
-        return None
+        OTP=input("Enter input manually: ")
 
     print("Parsed OTP:" + OTP)
 

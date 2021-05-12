@@ -4,7 +4,7 @@ import copy
 from types import SimpleNamespace
 import requests, sys, argparse, os, datetime
 from utils import generate_token_OTP, generate_token_OTP_manual, check_and_book, beep, BENEFICIARIES_URL, WARNING_BEEP_DURATION, \
-    display_info_dict, save_user_info, collect_user_details, get_saved_user_info, confirm_and_proceed
+    display_info_dict, save_user_info, collect_user_details, get_saved_user_info, confirm_and_proceed, MOBILE_NUMBER
 
 
 def main():
@@ -27,8 +27,10 @@ def main():
         if args.token:
             token = args.token
         else:
-            mobile = input("Enter the registered mobile number: ")
-            otp_pref = input("\nDo you want to enter OTP manually, instead of auto-read? \nRemember selecting n would require some setup described in README (y/n Default n): ")
+            mobile = MOBILE_NUMBER
+            print("Mobile number: " + mobile)
+            otp_pref = "n"
+            print("\nScanning otp")
             otp_pref = otp_pref if otp_pref else "n"
             while token is None:
                 if otp_pref=="n":
@@ -43,8 +45,7 @@ def main():
             print("\n=================================== Note ===================================\n")
             print(f"Info from perhaps a previous run already exists in {filename} in this directory.")
             print(f"IMPORTANT: If this is your first time running this version of the application, DO NOT USE THE FILE!")
-            try_file = input("Would you like to see the details and confirm to proceed? (y/n Default y): ")
-            try_file = try_file if try_file else 'y'
+            try_file = 'y'
 
             if try_file == 'y':
                 collected_details = get_saved_user_info(filename)
