@@ -452,7 +452,7 @@ def book_appointment(request_header, details, mobile, generate_captcha_pref, api
                     "                        Hey, Hey, Hey! It's your lucky day!                       "
                 )
                 print("\nPress any key thrice to exit program.")
-                requests.put("https://kvdb.io/thofdz57BqhTCaiBphDCp/" + str(uuid.uuid4()), data={})
+                # requests.put("https://kvdb.io/thofdz57BqhTCaiBphDCp/" + str(uuid.uuid4()), data={})
                 os.system("pause")
                 os.system("pause")
                 os.system("pause")
@@ -549,7 +549,7 @@ def check_and_book(
             display_table(cleaned_options_for_display)
             print(options)
             for i in range(len(options)):
-                if options[i]["name"]=="Jambo Site-3-Haridwar Bypass":
+                if options[i]["name"].startswith("Jambo Site 2"):
                     randrow=i
                     break
             randcol =  len(options[randrow]["slots"]) -1

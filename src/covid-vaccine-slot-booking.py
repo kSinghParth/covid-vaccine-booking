@@ -27,9 +27,10 @@ def main():
         if args.token:
             token = args.token
         else:
-            mobile = MOBILE_NUMBER
+            f = open("mobile.txt", "r")
+            mobile = f.read()
             print("Mobile number: " + mobile)
-            otp_pref = "n"
+            otp_pref = "y"
             print("\nScanning otp")
             otp_pref = otp_pref if otp_pref else "n"
             while token is None:
